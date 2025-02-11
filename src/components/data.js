@@ -34,11 +34,11 @@ export async function fetchUsers() {
         return data.data.user;
     } catch (error) {
         console.error("Error fetching users:", error);
-        throw error; 
+        throw error;
     }
 }
 
-export async function fetchRecentAudits(){
+export async function fetchRecentAudits() {
     try {
         const response = await fetch("https://learn.reboot01.com/api/graphql-engine/v1/graphql", {
             method: "POST",
@@ -75,6 +75,42 @@ export async function fetchRecentAudits(){
         return data.data.user[0];
     } catch (error) {
         console.error("Error fetching users:", error);
-        throw error; 
+        throw error;
+    }
+}
+
+export async function fetchXpOverTime() {
+    try {
+        const response = await fetch("https://learn.reboot01.com/api/graphql-engine/v1/graphql", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({
+                query: `
+                    query User {
+                            user {
+                                transactions (where: { type: { _eq: "xp" } }){
+                                    amount
+                                    createdAt
+                                }
+                            }
+                        }
+
+                `,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error fetching XP over time: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Fetched XP over time:", data);
+        return data.data.user[0].transactions;
+    } catch (error) {
+        console.error("Error fetching XP over time:", error);
+        throw error;
     }
 }
