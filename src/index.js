@@ -5,6 +5,8 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+const head = document.querySelector('head');
+head.appendChild(document.createElement('link')).innerHTML ='<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">';
 root.render(
   <React.StrictMode>
     <App />

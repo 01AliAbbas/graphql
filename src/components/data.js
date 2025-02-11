@@ -1,0 +1,80 @@
+export async function fetchUsers() {
+    try {
+        const response = await fetch("https://learn.reboot01.com/api/graphql-engine/v1/graphql", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({
+                query: `
+                    query {
+                        user {
+                            id
+                            login
+                            email
+                            firstName
+                            lastName
+                            createdAt
+                            auditRatio
+                            totalDown
+                            totalUp
+                        }
+                    }
+                `,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // console.log("Fetched users:", data);
+        return data.data.user;
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        throw error; 
+    }
+}
+
+export async function fetchRecentAudits(){
+    try {
+        const response = await fetch("https://learn.reboot01.com/api/graphql-engine/v1/graphql", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({
+                query: `query User {
+                    user {
+                        audits(order_by: { auditedAt: desc_nulls_last }, limit: 5) {
+                            closedAt
+                            closureType
+                            group {
+                                captainLogin
+                                object {
+                                    name
+                                }
+                            }
+                        }
+                    }
+                    
+                }
+                `,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error fetching recent audits: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Fetched Recent audits:", data);
+        return data.data.user[0];
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        throw error; 
+    }
+}
