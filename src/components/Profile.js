@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar,RadarChart, PolarGrid,PolarAngleAxis,PolarRadiusAxis,Radar } from "recharts";
 import {
     Box,
     Container,
@@ -27,6 +27,7 @@ function Profile() {
     const [user, setUser] = useState(null);
     const [recentAudits, setAudits] = useState(null);
     const [transactions, setXpOverTime] = useState([]);
+    const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -74,48 +75,12 @@ function Profile() {
         };
         fetchXpData();
     }, []);
-    useEffect(() => {
-        const fetchXpData = async () => {
-            try {
-                const skillsData = await data.fetchSkills();
-
-                // Aggregate skills by month
-                const monthlyData = skillsData.reduce((acc, skill) => {
-                    const date = new Date(skill.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        year: "numeric"
-                    });
-
-                    const existing = acc.find(entry => entry.date === date);
-                    if (existing) {
-                        existing.xp += skill.amount / 1024; // Maintain KB conversion
-                    } else {
-                        acc.push({
-                            date,
-                            xp: skill.amount / 1024
-                        });
-                    }
-                    return acc;
-                }, []);
-
-                // Sort data chronologically
-                monthlyData.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                setXpOverTime(monthlyData);
-            } catch (error) {
-                console.error("Failed to fetch skills:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchXpData();
-    }, []);
     // Get the skills
     useEffect(() => {
         const fetchSkillsData = async () => {
             try {
                 const skillsData = await data.fetchSkills();
-                
+
                 // Aggregate skills by type
                 const skillData = skillsData.reduce((acc, skill) => {
                     const existing = acc.find(entry => entry.type === skill.type);
@@ -129,8 +94,8 @@ function Profile() {
                     }
                     return acc;
                 }, []);
-                
-                setXpOverTime(skillData);
+
+                setSkills(skillData);
             } catch (error) {
                 console.error("Failed to fetch skills:", error);
             } finally {
@@ -143,8 +108,6 @@ function Profile() {
         localStorage.removeItem("token");
         navigate("/");
     };
-
-
 
     return (
         <Box
@@ -219,6 +182,36 @@ function Profile() {
                         <motion.div whileHover={{ scale: 1.05 }}>
                             <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff" }}>
                                 <CardContent>
+                                    <Box sx={{ minHeight: "50vh", background: "#1a1a2e", p: 3 }}>
+                                        <Container maxWidth="lg" sx={{ textAlign: "center" }}>
+                                            <Typography variant="h4" sx={{ color: "#0ff", fontWeight: "bold" }}>
+                                                XP by Skill Type (Spider Web)
+                                            </Typography>
+                                            <Grid container spacing={3} sx={{ mt: 4 }}>
+                                                <Grid item xs={12}>
+                                                    <motion.div whileHover={{ scale: 1.05 }}>
+                                                        <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2 }}>
+                                                            <CardContent>
+                                                                {loading ? (
+                                                                    <CircularProgress size={24} />
+                                                                ) : (
+                                                                    <ResponsiveContainer width="100%" height={400}>
+                                                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={skills}>
+                                                                            <PolarGrid />
+                                                                            <PolarAngleAxis dataKey="type" />
+                                                                            <PolarRadiusAxis angle={30} domain={[0, Math.max(...skills.map(item => item.xp))]} />
+                                                                            <Radar name="XP" dataKey="xp" stroke="#0ff" fill="#0ff" fillOpacity={0.6} />
+                                                                            <Tooltip contentStyle={{ backgroundColor: "#16213e", color: "white" }} />
+                                                                        </RadarChart>
+                                                                    </ResponsiveContainer>
+                                                                )}
+                                                            </CardContent>
+                                                        </Card>
+                                                    </motion.div>
+                                                </Grid>
+                                            </Grid>
+                                        </Container>
+                                    </Box>
                                     <Box sx={{ minHeight: "50vh", background: "#1a1a2e", p: 3 }}>
                                         <Container maxWidth="lg" sx={{ textAlign: "center" }}>
                                             <Typography variant="h4" sx={{ color: "#0ff", fontWeight: "bold" }}>
