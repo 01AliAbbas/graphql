@@ -19,6 +19,9 @@ export async function fetchUsers() {
                             auditRatio
                             totalDown
                             totalUp
+                            events(where: {event: {path: {_eq: "/bahrain/bh-module"}}}){
+                                    level
+                                }
                         }
                     }
                 `,
@@ -30,7 +33,7 @@ export async function fetchUsers() {
         }
 
         const data = await response.json();
-        // console.log("Fetched users:", data);
+        console.log("Fetched users:", data);
         return data.data.user;
     } catch (error) {
         console.error("Error fetching users:", error);
@@ -90,13 +93,30 @@ export async function fetchXpOverTime() {
             body: JSON.stringify({
                 query: `
                     query User {
-                            user {
-                                transactions (where: { type: { _eq: "xp" } }, , order_by: {createdAt: asc_nulls_last}){
+                    user {
+                        transactions(
+                            where: {
+                                _and: [{ type: { _eq: "xp" } }, { path: { _like: "/bahrain/bh-module/%" } }]
+                            }
+                            order_by: { createdAt: asc_nulls_last }
+                        ) {
+                            amount
+                            createdAt
+                            object {
+                                name
+                            }
+                        }
+                        transactions_aggregate(
+                            where: { event: { path: { _eq: "/bahrain/bh-module" } }, type: { _eq: "xp" } }
+                        ) {
+                            aggregate {
+                                sum {
                                     amount
-                                    createdAt
                                 }
                             }
                         }
+                    }
+                }
 
                 `,
             }),
@@ -108,7 +128,7 @@ export async function fetchXpOverTime() {
 
         const data = await response.json();
         console.log("Fetched XP over time:", data);
-        return data.data.user[0].transactions;
+        return data.data.user[0];
     } catch (error) {
         console.error("Error fetching XP over time:", error);
         throw error;

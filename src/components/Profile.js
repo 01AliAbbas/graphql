@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar,RadarChart, PolarGrid,PolarAngleAxis,PolarRadiusAxis,Radar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import {
     Box,
     Container,
@@ -17,10 +17,11 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Paper
+    Paper, LinearProgress
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import * as data from "./data";
+import AuditCard from "./auditCard";
 
 function Profile() {
     const navigate = useNavigate();
@@ -29,12 +30,16 @@ function Profile() {
     const [transactions, setXpOverTime] = useState([]);
     const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [totalXP, setTotalXP] = useState(0);
 
     useEffect(() => {
         const fetchUserData = async () => {
             try {
                 const users = await data.fetchUsers();
-                setUser(users[0]);
+                const user = users[0];
+                user.totalUp = Math.round((user?.totalUp / (1000 * 1000)) * 100) / 100;
+                user.totalDown = Math.round((user?.totalDown / (1000 * 1000)) * 100) / 100;
+                setUser(user);
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
             } finally {
@@ -62,11 +67,16 @@ function Profile() {
         const fetchXpData = async () => {
             try {
                 const xpData = await data.fetchXpOverTime();
-                const formattedData = xpData.map(tx => ({
+                const formattedData = xpData.transactions.map(tx => ({
                     date: new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-                    xp: tx.amount / (1024) //KB
+                    xp: tx.amount / 1000,
+                    obj: tx.object.name
                 }));
+
                 setXpOverTime(formattedData);
+                // Calculate total XP
+            const total = Math.round(xpData.transactions_aggregate.aggregate.sum.amount / 1000);
+            setTotalXP(total);
             } catch (error) {
                 console.error("Failed to fetch XP over time:", error);
             } finally {
@@ -81,29 +91,38 @@ function Profile() {
             try {
                 const skillsData = await data.fetchSkills();
 
+                // Define allowed skill types
+                const allowedTypes = ['skill_prog', 'skill_go', 'skill_back-end', 'skill_front-end', 'skill_js', 'skill_html'];
+
                 // Aggregate skills by type
-                const skillData = skillsData.reduce((acc, skill) => {
-                    const existing = acc.find(entry => entry.type === skill.type);
-                    if (existing) {
-                        existing.xp += skill.amount / 1024; // Maintain KB conversion
-                    } else {
-                        acc.push({
-                            type: skill.type,
-                            xp: skill.amount / 1024
-                        });
-                    }
+                const skillData = skillsData.reduce((acc, { amount, type }) => {
+                    const skillType = type.replace('skill_', ''); // Remove 'skill_' prefix
+                    // Check if the skill type is allowed
+                    if (!allowedTypes.includes(type.toLowerCase())) return acc;
+
+                    acc[skillType] = ((acc[skillType] || 0) + amount) / 1000; // Convert to KB
                     return acc;
                 }, []);
 
-                setSkills(skillData);
+                console.log("Filtered & Aggregated Skills data:", skillData);
+                const formattedSkills = Object.entries(skillData).map(([type, xp]) => ({ type, xp }));
+                const skillOrder = ["prog", "go", "back-end", "front-end", "js", "html"];
+
+                const sortedSkills = formattedSkills.sort((a, b) =>
+                    skillOrder.indexOf(a.type) - skillOrder.indexOf(b.type)
+                );
+                setSkills(sortedSkills);
             } catch (error) {
                 console.error("Failed to fetch skills:", error);
             } finally {
                 setLoading(false);
             }
         };
+
         fetchSkillsData();
     }, []);
+
+
     const handleLogout = () => {
         localStorage.removeItem("token");
         navigate("/");
@@ -118,7 +137,7 @@ function Profile() {
                 overflow: "hidden",
             }}
         >
-            <Container maxWidth="md" sx={{ position: "relative", textAlign: "center" }}>
+            <Container sx={{ position: "relative", textAlign: "center", }}>
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -146,60 +165,44 @@ function Profile() {
                 >
                     <LogoutIcon />
                 </IconButton>
-
                 <Grid container spacing={3} sx={{ mt: 4 }}>
-                    <Grid item xs={12} md={6}>
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff", height: '100%' }}>
-                                <CardContent>
-                                    <Typography variant="h6" sx={{ color: "#0ff" }}>User Details</Typography>
+                    <Grid container spacing={3} sx={{ mt: 4 }}>
+                        <Grid item xs={12}>
+                            <motion.div whileHover={{ scale: 1.05 }}>
+                                <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff", }}>
                                     {loading ? (
                                         <CircularProgress size={24} />
                                     ) : (
-                                        <>
-                                            <Typography>Name: {user?.firstName} {user?.lastName}</Typography>
-                                            <Typography>Email: {user?.email}</Typography>
-                                            <Typography>Joined At: {new Date(user?.createdAt).toLocaleDateString()}</Typography>
-                                        </>
+                                        <AuditCard user={user} />
                                     )}
-                                </CardContent>
-                            </Card>
-                        </motion.div>
+                                </Card>
+                            </motion.div>
+                        </Grid>
                     </Grid>
-                    <Grid item xs={12} md={6}>
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff", height: '100%' }}>
-                                <CardContent>
-                                    <Typography variant="h6" sx={{ mb: 2, color: "#0ff" }}>Audit Ratio</Typography>
-                                    <Typography>your audit ratio is {user?.auditRatio.toFixed(1)}</Typography>
-                                    <Typography>Done {Math.round((user?.totalUp / (1024 * 1024)) * 100) / 100} MB</Typography>
-                                    <Typography>Received {Math.round((user?.totalDown / (1024 * 1024)) * 100) / 100} MB</Typography>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    </Grid>
+
                     <Grid item xs={12}>
                         <motion.div whileHover={{ scale: 1.05 }}>
                             <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff" }}>
                                 <CardContent>
                                     <Box sx={{ minHeight: "50vh", background: "#1a1a2e", p: 3 }}>
-                                        <Container maxWidth="lg" sx={{ textAlign: "center" }}>
+                                        <Container maxWidth="59vh" sx={{ textAlign: "center" }}>
                                             <Typography variant="h4" sx={{ color: "#0ff", fontWeight: "bold" }}>
-                                                XP by Skill Type (Spider Web)
+                                                Interesting Information
                                             </Typography>
                                             <Grid container spacing={3} sx={{ mt: 4 }}>
-                                                <Grid item xs={12}>
+                                                <Grid item xs={12} md={6}>
                                                     <motion.div whileHover={{ scale: 1.05 }}>
                                                         <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2 }}>
                                                             <CardContent>
                                                                 {loading ? (
                                                                     <CircularProgress size={24} />
                                                                 ) : (
-                                                                    <ResponsiveContainer width="100%" height={400}>
-                                                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={skills}>
+                                                                    <ResponsiveContainer width="95%" height={300}>
+                                                                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={skills}>
+                                                                            <text x="50%" y="10" textAnchor="middle" dominantBaseline="middle" fill="white">XP by Skill Type</text>
                                                                             <PolarGrid />
-                                                                            <PolarAngleAxis dataKey="type" />
-                                                                            <PolarRadiusAxis angle={30} domain={[0, Math.max(...skills.map(item => item.xp))]} />
+                                                                            <PolarAngleAxis dataKey="type" tick={{ fontSize: 14, fill: "#0ff" }} />
+                                                                            {/* <PolarRadiusAxis angle={180} domain={[0, Math.max(...skills.map(item => item.xp))]} /> */}
                                                                             <Radar name="XP" dataKey="xp" stroke="#0ff" fill="#0ff" fillOpacity={0.6} />
                                                                             <Tooltip contentStyle={{ backgroundColor: "#16213e", color: "white" }} />
                                                                         </RadarChart>
@@ -209,29 +212,46 @@ function Profile() {
                                                         </Card>
                                                     </motion.div>
                                                 </Grid>
-                                            </Grid>
-                                        </Container>
-                                    </Box>
-                                    <Box sx={{ minHeight: "50vh", background: "#1a1a2e", p: 3 }}>
-                                        <Container maxWidth="lg" sx={{ textAlign: "center" }}>
-                                            <Typography variant="h4" sx={{ color: "#0ff", fontWeight: "bold" }}>
-                                                XP Over Time
-                                            </Typography>
-                                            <Grid container spacing={3} sx={{ mt: 4 }}>
-                                                <Grid item xs={12}>
+                                                <Grid item xs={12} md={6}>
                                                     <motion.div whileHover={{ scale: 1.05 }}>
                                                         <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2 }}>
                                                             <CardContent>
                                                                 {loading ? (
                                                                     <CircularProgress size={24} />
                                                                 ) : (
-                                                                    <ResponsiveContainer width="100%" height={400}>
+                                                                    <ResponsiveContainer width="95%" height={300}>
                                                                         <LineChart data={transactions}>
-                                                                            <XAxis dataKey="date" stroke="white" interval={15} angle={-45} textAnchor="end" height={100} />
-                                                                            <YAxis stroke="#0ff" tickCount={1} label={{ value: "XP (KB)", angle: -90, position: "insideLeft" }} domain={['auto', 'auto']} />
-                                                                            <Tooltip contentStyle={{ backgroundColor: "#16213e", color: "white" }} />
-                                                                            <Line type="monotone" dataKey="xp" stroke="#0ff" strokeWidth={2} dot={{ r: 1 }} />
+                                                                            <text x="50%" y="10" textAnchor="middle" dominantBaseline="middle" fill="white">XP Over Time</text>
+                                                                            <XAxis dataKey="date" stroke="white" interval={25} angle={-45} textAnchor="end" height={100} />
+                                                                            <YAxis stroke="#0ff" tickCount={30} label={{ value: "XP (KB)", angle: -90, position: "insideLeft" }} domain={['auto', 'auto']} />
+                                                                            <Tooltip
+                                                                                content={({ active, payload }) => {
+                                                                                    if (active && payload && payload.length) {
+                                                                                        const data = payload[0].payload; // Get the data object for the hovered point
+                                                                                        const sameDateObjects = payload.map(entry => entry.payload.obj); // Extract all object names
+
+                                                                                        return (
+                                                                                            <div style={{ backgroundColor: "#16213e", color: "white", padding: "8px", borderRadius: "5px" }}>
+                                                                                                <p style={{ margin: 0 }}>📅 {data.date}</p>
+                                                                                                <p style={{ margin: 0 }}>⚡ Total XP: {data.xp.toFixed(2)} KB</p>
+                                                                                                <ul style={{ padding: 0, margin: 0 }}>
+                                                                                                    {sameDateObjects.map((objName, index) => (
+                                                                                                        <li key={index} style={{ listStyle: "none" }}>🔹 {objName}</li>
+                                                                                                    ))}
+                                                                                                </ul>
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+                                                                                    return null;
+                                                                                }}
+                                                                            />
+
+
+                                                                            <Line type="monotone" dataKey="xp" stroke="#0ff" strokeWidth={2} dot={{ r: 1, fill: "white", stroke: "white", strokeOpacity: 60 }} />
                                                                         </LineChart>
+                                                                        <Typography>
+                                                                            Total XP: {totalXP.toFixed(2)} KB
+                                                                        </Typography>
                                                                     </ResponsiveContainer>
                                                                 )}
                                                             </CardContent>
