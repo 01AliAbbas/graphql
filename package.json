@@ -1,4 +1,7 @@
 {
+  "homepage": "https://01aliabbas.github.io/graphql/",
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d build",
   "name": "graphql",
   "version": "0.1.0",
   "private": true,
@@ -57,6 +60,7 @@
     ]
   },
   "devDependencies": {
-    "@types/react-router-dom": "^5.3.3"
+    "@types/react-router-dom": "^5.3.3",
+    "gh-pages": "^6.3.0"
   }
 }
