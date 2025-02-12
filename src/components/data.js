@@ -91,13 +91,48 @@ export async function fetchXpOverTime() {
                 query: `
                     query User {
                             user {
-                                transactions (where: { type: { _eq: "xp" } }){
+                                transactions (where: { type: { _eq: "xp" } }, , order_by: {createdAt: asc_nulls_last}){
                                     amount
                                     createdAt
                                 }
                             }
                         }
 
+                `,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error fetching XP over time: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Fetched XP over time:", data);
+        return data.data.user[0].transactions;
+    } catch (error) {
+        console.error("Error fetching XP over time:", error);
+        throw error;
+    }
+}
+
+export async function fetchSkills(){
+    try {
+        const response = await fetch("https://learn.reboot01.com/api/graphql-engine/v1/graphql", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({
+                query: `
+                    query User {
+                        user {
+                            transactions(where: { type: { _like: "skill_%" } }) {
+                                type
+                                amount
+                            }
+                        }
+                    }
                 `,
             }),
         });

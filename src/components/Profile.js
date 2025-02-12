@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import {
     Box,
     Container,
@@ -60,111 +61,95 @@ function Profile() {
         const fetchXpData = async () => {
             try {
                 const xpData = await data.fetchXpOverTime();
-                setXpOverTime(xpData);
+                const formattedData = xpData.map(tx => ({
+                    date: new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+                    xp: tx.amount / (1024) //KB
+                }));
+                setXpOverTime(formattedData);
             } catch (error) {
                 console.error("Failed to fetch XP over time:", error);
+            } finally {
+                setLoading(false);
             }
         };
         fetchXpData();
     }, []);
+    useEffect(() => {
+        const fetchXpData = async () => {
+            try {
+                const skillsData = await data.fetchSkills();
 
+                // Aggregate skills by month
+                const monthlyData = skillsData.reduce((acc, skill) => {
+                    const date = new Date(skill.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        year: "numeric"
+                    });
+
+                    const existing = acc.find(entry => entry.date === date);
+                    if (existing) {
+                        existing.xp += skill.amount / 1024; // Maintain KB conversion
+                    } else {
+                        acc.push({
+                            date,
+                            xp: skill.amount / 1024
+                        });
+                    }
+                    return acc;
+                }, []);
+
+                // Sort data chronologically
+                monthlyData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                setXpOverTime(monthlyData);
+            } catch (error) {
+                console.error("Failed to fetch skills:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchXpData();
+    }, []);
+    // Get the skills
+    useEffect(() => {
+        const fetchSkillsData = async () => {
+            try {
+                const skillsData = await data.fetchSkills();
+                
+                // Aggregate skills by type
+                const skillData = skillsData.reduce((acc, skill) => {
+                    const existing = acc.find(entry => entry.type === skill.type);
+                    if (existing) {
+                        existing.xp += skill.amount / 1024; // Maintain KB conversion
+                    } else {
+                        acc.push({
+                            type: skill.type,
+                            xp: skill.amount / 1024
+                        });
+                    }
+                    return acc;
+                }, []);
+                
+                setXpOverTime(skillData);
+            } catch (error) {
+                console.error("Failed to fetch skills:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSkillsData();
+    }, []);
     const handleLogout = () => {
         localStorage.removeItem("token");
         navigate("/");
     };
 
-    const renderGraph = () => {
-        if (!transactions || transactions.length === 0) {
-            return `<svg width="400" height="100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">No data available</text></svg>`;
-        }
-    
-        // SVG dimensions and padding
-        const width = 600;
-        const height = 400;
-        const padding = { top: 30, right: 30, bottom: 50, left: 60 };
-    
-        // Parse and sort data
-        const parsedData = transactions
-            .map(t => ({
-                date: new Date(t.createdAt),
-                value: parseInt(t.amount)
-            }))
-            .sort((a, b) => a.date - b.date);
-    
-        // Calculate scales
-        const xExtent = [parsedData[0].date, parsedData[parsedData.length - 1].date];
-        const maxY = Math.max(1, ...parsedData.map(d => d.value));
-    
-        // Scale functions
-        const xScale = (date) => 
-            padding.left + 
-            ((date - xExtent[0]) / (xExtent[1] - xExtent[0])) * 
-            (width - padding.left - padding.right);
-    
-        const yScale = (value) => 
-            height - padding.bottom - 
-            (value / maxY) * (height - padding.top - padding.bottom);
-    
-        // Generate path data for the line
-        const pathData = parsedData
-            .map(d => `L ${xScale(d.date)} ${yScale(d.value)}`)
-            .join(' ');
-        const fullPath = `M ${xScale(parsedData[0].date)} ${yScale(parsedData[0].value)} ${pathData}`;
-    
-        // Generate axis ticks
-        const xTicks = [xExtent[0], new Date((xExtent[0].getTime() + xExtent[1].getTime()) / 2), xExtent[1]];
-        const yTicks = [0, maxY/2, maxY];
-    
-        return `
-        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-            <style>
-                .axis { stroke: #666; stroke-width: 1; }
-                .tick { stroke: #ddd; }
-                .line { fill: none; stroke: #2196F3; stroke-width: 2; }
-                .point { fill: #2196F3; }
-                .label { fill: #666; font-size: 12px; }
-            </style>
-            
-            <rect width="100%" height="100%" fill="white" />
-            
-            <!-- X Axis -->
-            <path class="axis" d="M ${padding.left} ${height - padding.bottom} H ${width - padding.right}" />
-            ${xTicks.map(date => `
-                <g transform="translate(${xScale(date)} ${height - padding.bottom})">
-                    <line class="tick" y2="6" />
-                    <text class="label" y="25" text-anchor="middle">
-                        ${date.toLocaleDateString()}
-                    </text>
-                </g>
-            `).join('')}
-            
-            <!-- Y Axis -->
-            <path class="axis" d="M ${padding.left} ${padding.top} V ${height - padding.bottom}" />
-            ${yTicks.map(value => `
-                <g transform="translate(${padding.left} ${yScale(value)})">
-                    <line class="tick" x2="-6" />
-                    <text class="label" x="-10" y="5" text-anchor="end">
-                        ${value}
-                    </text>
-                </g>
-            `).join('')}
-            
-            <path class="line" d="${fullPath.replace(/</g, '&lt;')}" />
-            
-            ${parsedData.map(d => `
-                <circle class="point" cx="${xScale(d.date)}" cy="${yScale(d.value)}" r="3" />
-            `).join('')}
-            
-            <text class="label" x="${width/2}" y="${height - 10}">Date</text>
-            <text class="label" transform="rotate(-90)" x="-${height/2}" y="15">XP</text>
-            <text class="label" x="${width/2}" y="20">XP Over Time</text>
-        </svg>`;
-    };
+
 
     return (
         <Box
             sx={{
-                minHeight: "100vh",
+                minHeight: "50vh",
                 background: "radial-gradient(circle, #1a1a2e, #16213e)",
                 p: 3,
                 overflow: "hidden",
@@ -202,7 +187,7 @@ function Profile() {
                 <Grid container spacing={3} sx={{ mt: 4 }}>
                     <Grid item xs={12} md={6}>
                         <motion.div whileHover={{ scale: 1.05 }}>
-                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff" }}>
+                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff", height: '100%' }}>
                                 <CardContent>
                                     <Typography variant="h6" sx={{ color: "#0ff" }}>User Details</Typography>
                                     {loading ? (
@@ -220,9 +205,9 @@ function Profile() {
                     </Grid>
                     <Grid item xs={12} md={6}>
                         <motion.div whileHover={{ scale: 1.05 }}>
-                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff" }}>
+                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff", height: '100%' }}>
                                 <CardContent>
-                                    <Typography variant="h6" sx={{ mb: 2 }}>Audit Ratio</Typography>
+                                    <Typography variant="h6" sx={{ mb: 2, color: "#0ff" }}>Audit Ratio</Typography>
                                     <Typography>your audit ratio is {user?.auditRatio.toFixed(1)}</Typography>
                                     <Typography>Done {Math.round((user?.totalUp / (1024 * 1024)) * 100) / 100} MB</Typography>
                                     <Typography>Received {Math.round((user?.totalDown / (1024 * 1024)) * 100) / 100} MB</Typography>
@@ -234,8 +219,35 @@ function Profile() {
                         <motion.div whileHover={{ scale: 1.05 }}>
                             <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff" }}>
                                 <CardContent>
-                                    <Typography variant="h6" sx={{ color: "#0ff" }}>XP Over Time</Typography>
-                                    <div dangerouslySetInnerHTML={{ __html: renderGraph() }} />
+                                    <Box sx={{ minHeight: "50vh", background: "#1a1a2e", p: 3 }}>
+                                        <Container maxWidth="lg" sx={{ textAlign: "center" }}>
+                                            <Typography variant="h4" sx={{ color: "#0ff", fontWeight: "bold" }}>
+                                                XP Over Time
+                                            </Typography>
+                                            <Grid container spacing={3} sx={{ mt: 4 }}>
+                                                <Grid item xs={12}>
+                                                    <motion.div whileHover={{ scale: 1.05 }}>
+                                                        <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2 }}>
+                                                            <CardContent>
+                                                                {loading ? (
+                                                                    <CircularProgress size={24} />
+                                                                ) : (
+                                                                    <ResponsiveContainer width="100%" height={400}>
+                                                                        <LineChart data={transactions}>
+                                                                            <XAxis dataKey="date" stroke="white" interval={15} angle={-45} textAnchor="end" height={100} />
+                                                                            <YAxis stroke="#0ff" tickCount={1} label={{ value: "XP (KB)", angle: -90, position: "insideLeft" }} domain={['auto', 'auto']} />
+                                                                            <Tooltip contentStyle={{ backgroundColor: "#16213e", color: "white" }} />
+                                                                            <Line type="monotone" dataKey="xp" stroke="#0ff" strokeWidth={2} dot={{ r: 1 }} />
+                                                                        </LineChart>
+                                                                    </ResponsiveContainer>
+                                                                )}
+                                                            </CardContent>
+                                                        </Card>
+                                                    </motion.div>
+                                                </Grid>
+                                            </Grid>
+                                        </Container>
+                                    </Box>
                                 </CardContent>
                             </Card>
                         </motion.div>
@@ -265,10 +277,10 @@ function Profile() {
                                                 ) : (
                                                     recentAudits?.audits?.map((audit, index) => (
                                                         <TableRow key={index}>
-                                                            <TableCell sx={{ color: "#0ff" }}>{audit.group.object.name}</TableCell>
-                                                            <TableCell sx={{ color: "#0ff" }}>{audit.group.captainLogin}</TableCell>
-                                                            <TableCell sx={{ color: "#0ff" }}>{new Date(audit.closedAt).toLocaleDateString()}</TableCell>
-                                                            <TableCell sx={{ color: "#0ff" }}>{audit.closureType}</TableCell>
+                                                            <TableCell sx={{ color: "white" }}>{audit.group.object.name}</TableCell>
+                                                            <TableCell sx={{ color: "white" }}>{audit.group.captainLogin}</TableCell>
+                                                            <TableCell sx={{ color: "white" }}>{new Date(audit.closedAt).toLocaleDateString()}</TableCell>
+                                                            <TableCell sx={{ color: "white" }}>{audit.closureType}</TableCell>
                                                         </TableRow>
                                                     ))
                                                 )}
