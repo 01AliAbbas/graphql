@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from "recharts";
 import {
     Box,
     Container,
@@ -15,13 +15,73 @@ import {
     TableBody,
     TableCell,
     TableContainer,
-    TableHead,
     TableRow,
-    Paper, LinearProgress
+    TableHead, // Add this line
+    Paper
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import * as data from "./data";
 import AuditCard from "./auditCard";
+import Particles from "react-tsparticles";
+import { loadFull } from "tsparticles";
+
+const ParticlesComponent = () => {
+    const particlesInit = useCallback(async engine => {
+        await loadFull(engine);
+    }, []);
+
+    return (
+        <Particles
+            id="tsparticles"
+            init={particlesInit}
+            options={{
+                background: { color: { value: "transparent" } },
+                particles: {
+                    number: { value: 40, density: { enable: true, value_area: 800 } },
+                    color: { value: "#0ff" },
+                    shape: { type: "circle" },
+                    opacity: { value: 0.5 },
+                    size: { value: 3, random: true },
+                    links: {
+                        enable: true,
+                        distance: 150,
+                        color: "#0ff",
+                        opacity: 0.4,
+                        width: 1
+                    },
+                    move: {
+                        enable: true,
+                        speed: 1.5,
+                        direction: "none",
+                        random: false,
+                        straight: false,
+                        out_mode: "out",
+                        bounce: false,
+                    }
+                },
+                interactivity: {
+                    events: {
+                        onHover: { enable: true, mode: "repulse" },
+                        onClick: { enable: true, mode: "push" }
+                    },
+                    modes: {
+                        repulse: { distance: 100, duration: 0.4 },
+                        push: { particles_nb: 4 }
+                    }
+                },
+                retina_detect: true
+            }}
+            style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                zIndex: 0
+            }}
+        />
+    );
+};
 
 function Profile() {
     const navigate = useNavigate();
@@ -74,9 +134,8 @@ function Profile() {
                 }));
 
                 setXpOverTime(formattedData);
-                // Calculate total XP
-            const total = Math.round(xpData.transactions_aggregate.aggregate.sum.amount / 1000);
-            setTotalXP(total);
+                const total = Math.round(xpData.transactions_aggregate.aggregate.sum.amount / 1000);
+                setTotalXP(total);
             } catch (error) {
                 console.error("Failed to fetch XP over time:", error);
             } finally {
@@ -85,29 +144,20 @@ function Profile() {
         };
         fetchXpData();
     }, []);
-    // Get the skills
+
     useEffect(() => {
         const fetchSkillsData = async () => {
             try {
                 const skillsData = await data.fetchSkills();
-
-                // Define allowed skill types
                 const allowedTypes = ['skill_prog', 'skill_go', 'skill_back-end', 'skill_front-end', 'skill_js', 'skill_html'];
-
-                // Aggregate skills by type
                 const skillData = skillsData.reduce((acc, { amount, type }) => {
-                    const skillType = type.replace('skill_', ''); // Remove 'skill_' prefix
-                    // Check if the skill type is allowed
+                    const skillType = type.replace('skill_', '');
                     if (!allowedTypes.includes(type.toLowerCase())) return acc;
-
-                    acc[skillType] = ((acc[skillType] || 0) + amount) / 1000; // Convert to KB
+                    acc[skillType] = ((acc[skillType] || 0) + amount) / 1000;
                     return acc;
                 }, []);
-
-                console.log("Filtered & Aggregated Skills data:", skillData);
                 const formattedSkills = Object.entries(skillData).map(([type, xp]) => ({ type, xp }));
                 const skillOrder = ["prog", "go", "back-end", "front-end", "js", "html"];
-
                 const sortedSkills = formattedSkills.sort((a, b) =>
                     skillOrder.indexOf(a.type) - skillOrder.indexOf(b.type)
                 );
@@ -118,10 +168,8 @@ function Profile() {
                 setLoading(false);
             }
         };
-
         fetchSkillsData();
     }, []);
-
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -135,23 +183,35 @@ function Profile() {
                 background: "radial-gradient(circle, #1a1a2e, #16213e)",
                 p: 3,
                 overflow: "hidden",
+                position: "relative",
             }}
         >
-            <Container sx={{ position: "relative", textAlign: "center", }}>
+            <ParticlesComponent />
+
+            <Container sx={{ position: "relative", textAlign: "center", zIndex: 1 }}>
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
+                    transition={{ duration: 0.8, type: "spring" }}
                 >
                     <Typography
                         variant="h4"
-                        sx={{ color: "#0ff", fontWeight: "bold", textShadow: "0px 0px 10px #0ff" }}
+                        sx={{
+                            color: "#0ff",
+                            fontWeight: "bold",
+                            textShadow: "0px 0px 10px #0ff",
+                            fontFamily: "monospace",
+                            letterSpacing: "4px"
+                        }}
                     >
                         Quantum Flux Dashboard
                     </Typography>
                 </motion.div>
 
                 <IconButton
+                    component={motion.div}
+                    whileHover={{ scale: 1.1, rotate: 180 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={handleLogout}
                     sx={{
                         position: "absolute",
@@ -160,51 +220,119 @@ function Profile() {
                         m: 2,
                         color: "#0ff",
                         backgroundColor: "rgba(0, 255, 255, 0.2)",
-                        "&:hover": { backgroundColor: "rgba(0, 255, 255, 0.4)" },
+                        backdropFilter: "blur(5px)",
+                        "&:hover": {
+                            backgroundColor: "rgba(0, 255, 255, 0.4)",
+                            boxShadow: "0 0 15px #0ff"
+                        },
                     }}
                 >
                     <LogoutIcon />
                 </IconButton>
+
                 <Grid container spacing={3} sx={{ mt: 4 }}>
-                    <Grid container spacing={3} sx={{ mt: 4 }}>
-                        <Grid item xs={12}>
-                            <motion.div whileHover={{ scale: 1.05 }}>
-                                <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff", }}>
-                                    {loading ? (
-                                        <CircularProgress size={24} />
-                                    ) : (
-                                        <AuditCard user={user} />
-                                    )}
-                                </Card>
-                            </motion.div>
-                        </Grid>
+                    <Grid item xs={12}>
+                        <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            <Card
+                                component={motion.div}
+                                whileHover={{
+                                    scale: 1.02,
+                                    boxShadow: "0px 0px 30px #0ff"
+                                }}
+                                sx={{
+                                    background: "rgba(0, 255, 255, 0.1)",
+                                    p: 2,
+                                    border: "1px solid rgba(0, 255, 255, 0.3)",
+                                    backdropFilter: "blur(10px)",
+                                }}
+                            >
+                                {loading ? (
+                                    <Box sx={{ p: 4, textAlign: "center" }}>
+                                        <CircularProgress size={24} sx={{ color: "#0ff" }} />
+                                    </Box>
+                                ) : (
+                                    <AuditCard user={user} />
+                                )}
+                            </Card>
+                        </motion.div>
                     </Grid>
 
                     <Grid item xs={12}>
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff" }}>
+                        <motion.div
+                            initial={{ opacity: 0, x: -50 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.4 }}
+                        >
+                            <Card
+                                component={motion.div}
+                                whileHover={{ scale: 1.01 }}
+                                sx={{
+                                    background: "rgba(0, 255, 255, 0.1)",
+                                    p: 2,
+                                    border: "1px solid rgba(0, 255, 255, 0.3)",
+                                    backdropFilter: "blur(10px)",
+                                }}
+                            >
                                 <CardContent>
-                                    <Box sx={{ minHeight: "50vh", background: "#1a1a2e", p: 3 }}>
-                                        <Container maxWidth="59vh" sx={{ textAlign: "center" }}>
-                                            <Typography variant="h4" sx={{ color: "#0ff", fontWeight: "bold" }}>
-                                                Interesting Information
+                                    <Box sx={{ minHeight: "50vh", p: 3 }}>
+                                        <Container maxWidth="59vh">
+                                            <Typography
+                                                variant="h4"
+                                                component={motion.div}
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                sx={{
+                                                    color: "#0ff",
+                                                    fontWeight: "bold",
+                                                    textShadow: "0 0 10px #0ff"
+                                                }}
+                                            >
+                                                Quantum Analytics
                                             </Typography>
                                             <Grid container spacing={3} sx={{ mt: 4 }}>
                                                 <Grid item xs={12} md={6}>
-                                                    <motion.div whileHover={{ scale: 1.05 }}>
-                                                        <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2 }}>
+                                                    <motion.div
+                                                        whileHover={{ scale: 1.03 }}
+                                                        transition={{ type: "spring", stiffness: 200 }}
+                                                    >
+                                                        <Card sx={{
+                                                            background: "rgba(0, 255, 255, 0.15)",
+                                                            border: "1px solid #0ff",
+                                                            borderRadius: "16px"
+                                                        }}>
                                                             <CardContent>
                                                                 {loading ? (
                                                                     <CircularProgress size={24} />
                                                                 ) : (
                                                                     <ResponsiveContainer width="95%" height={300}>
-                                                                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={skills}>
-                                                                            <text x="50%" y="10" textAnchor="middle" dominantBaseline="middle" fill="white">XP by Skill Type</text>
-                                                                            <PolarGrid />
-                                                                            <PolarAngleAxis dataKey="type" tick={{ fontSize: 14, fill: "#0ff" }} />
-                                                                            {/* <PolarRadiusAxis angle={180} domain={[0, Math.max(...skills.map(item => item.xp))]} /> */}
-                                                                            <Radar name="XP" dataKey="xp" stroke="#0ff" fill="#0ff" fillOpacity={0.6} />
-                                                                            <Tooltip contentStyle={{ backgroundColor: "#16213e", color: "white" }} />
+                                                                        <RadarChart data={skills}>
+                                                                            <PolarGrid stroke="#0ff44" />
+                                                                            <PolarAngleAxis
+                                                                                dataKey="type"
+                                                                                tick={{
+                                                                                    fill: "#0ff",
+                                                                                    fontSize: 12
+                                                                                }}
+                                                                            />
+                                                                            <Radar
+                                                                                name="XP"
+                                                                                dataKey="xp"
+                                                                                stroke="#bc13fe"
+                                                                                fill="#0ff"
+                                                                                fillOpacity={0.4}
+                                                                                animationDuration={400}
+                                                                            />
+                                                                            <Tooltip
+                                                                                contentStyle={{
+                                                                                    backgroundColor: "#16213e",
+                                                                                    border: "1px solid #0ff",
+                                                                                    borderRadius: "8px"
+                                                                                }}
+                                                                            />
                                                                         </RadarChart>
                                                                     </ResponsiveContainer>
                                                                 )}
@@ -213,47 +341,65 @@ function Profile() {
                                                     </motion.div>
                                                 </Grid>
                                                 <Grid item xs={12} md={6}>
-                                                    <motion.div whileHover={{ scale: 1.05 }}>
-                                                        <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2 }}>
+                                                    <motion.div
+                                                        whileHover={{ scale: 1.03 }}
+                                                        transition={{ type: "spring", stiffness: 200 }}
+                                                    >
+                                                        <Card sx={{
+                                                            background: "rgba(0, 255, 255, 0.15)",
+                                                            border: "1px solid #0ff",
+                                                            borderRadius: "16px"
+                                                        }}>
                                                             <CardContent>
                                                                 {loading ? (
                                                                     <CircularProgress size={24} />
                                                                 ) : (
                                                                     <ResponsiveContainer width="95%" height={300}>
                                                                         <LineChart data={transactions}>
-                                                                            <text x="50%" y="10" textAnchor="middle" dominantBaseline="middle" fill="white">XP Over Time</text>
-                                                                            <XAxis dataKey="date" stroke="white" interval={25} angle={-45} textAnchor="end" height={100} />
-                                                                            <YAxis stroke="#0ff" tickCount={30} label={{ value: "XP (KB)", angle: -90, position: "insideLeft" }} domain={['auto', 'auto']} />
+                                                                            <XAxis
+                                                                                dataKey="date"
+                                                                                stroke="#0ff"
+                                                                                tick={{ fill: "#0ff" }}
+                                                                            />
+                                                                            <YAxis
+                                                                                stroke="#0ff"
+                                                                                tick={{ fill: "#0ff" }}
+                                                                            />
                                                                             <Tooltip
-                                                                                content={({ active, payload }) => {
-                                                                                    if (active && payload && payload.length) {
-                                                                                        const data = payload[0].payload; // Get the data object for the hovered point
-                                                                                        const sameDateObjects = payload.map(entry => entry.payload.obj); // Extract all object names
-
-                                                                                        return (
-                                                                                            <div style={{ backgroundColor: "#16213e", color: "white", padding: "8px", borderRadius: "5px" }}>
-                                                                                                <p style={{ margin: 0 }}>📅 {data.date}</p>
-                                                                                                <p style={{ margin: 0 }}>⚡ Total XP: {data.xp.toFixed(2)} KB</p>
-                                                                                                <ul style={{ padding: 0, margin: 0 }}>
-                                                                                                    {sameDateObjects.map((objName, index) => (
-                                                                                                        <li key={index} style={{ listStyle: "none" }}>🔹 {objName}</li>
-                                                                                                    ))}
-                                                                                                </ul>
-                                                                                            </div>
-                                                                                        );
-                                                                                    }
-                                                                                    return null;
+                                                                                contentStyle={{
+                                                                                    backgroundColor: "#16213e",
+                                                                                    border: "1px solid #0ff",
+                                                                                    borderRadius: "8px"
                                                                                 }}
                                                                             />
-
-
-                                                                            <Line type="monotone" dataKey="xp" stroke="#0ff" strokeWidth={2} dot={{ r: 1, fill: "white", stroke: "white", strokeOpacity: 60 }} />
+                                                                            <Line
+                                                                                type="monotone"
+                                                                                dataKey="xp"
+                                                                                stroke="#bc13fe"
+                                                                                strokeWidth={2}
+                                                                                dot={{ fill: "#0ff" }}
+                                                                                animationDuration={400}
+                                                                            />
                                                                         </LineChart>
-                                                                        <Typography>
-                                                                            Total XP: {totalXP.toFixed(2)} KB
-                                                                        </Typography>
                                                                     </ResponsiveContainer>
                                                                 )}
+                                                                <Typography
+                                                                    component={motion.div}
+                                                                    animate={{
+                                                                        textShadow: ["0 0 10px #0ff", "0 0 15px #bc13fe", "0 0 10px #0ff"]
+                                                                    }}
+                                                                    transition={{
+                                                                        duration: 2,
+                                                                        repeat: Infinity
+                                                                    }}
+                                                                    sx={{
+                                                                        color: "#0ff",
+                                                                        mt: 2,
+                                                                        fontWeight: "bold"
+                                                                    }}
+                                                                >
+                                                                    Total XP: {totalXP.toFixed(2)} KB
+                                                                </Typography>
                                                             </CardContent>
                                                         </Card>
                                                     </motion.div>
@@ -265,19 +411,54 @@ function Profile() {
                             </Card>
                         </motion.div>
                     </Grid>
+
                     <Grid item xs={12}>
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                            <Card sx={{ background: "rgba(0, 255, 255, 0.1)", p: 2, boxShadow: "0px 0px 20px #0ff" }}>
+                        <motion.div
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.6 }}
+                        >
+                            <Card
+                                component={motion.div}
+                                whileHover={{ scale: 1.01 }}
+                                sx={{
+                                    background: "rgba(0, 255, 255, 0.1)",
+                                    p: 2,
+                                    border: "1px solid rgba(0, 255, 255, 0.3)",
+                                    backdropFilter: "blur(10px)",
+                                }}
+                            >
                                 <CardContent>
-                                    <Typography variant="h6" sx={{ color: "#0ff" }}>Recent Audits</Typography>
+                                    <Typography
+                                        variant="h6"
+                                        component={motion.div}
+                                        animate={{
+                                            textShadow: ["0 0 10px #0ff", "0 0 15px #bc13fe", "0 0 10px #0ff"]
+                                        }}
+                                        transition={{ duration: 2, repeat: Infinity }}
+                                        sx={{ color: "#0ff", mb: 2 }}
+                                    >
+                                        Recent Audits
+                                    </Typography>
                                     <TableContainer component={Paper} sx={{ background: "transparent" }}>
                                         <Table>
                                             <TableHead>
                                                 <TableRow>
-                                                    <TableCell sx={{ color: "#0ff" }}>Project Name</TableCell>
-                                                    <TableCell sx={{ color: "#0ff" }}>Captain</TableCell>
-                                                    <TableCell sx={{ color: "#0ff" }}>Date</TableCell>
-                                                    <TableCell sx={{ color: "#0ff" }}>Result</TableCell>
+                                                    {["Project Name", "Captain", "Date", "Result"].map((header, index) => (
+                                                        <TableCell
+                                                            key={index}
+                                                            component={motion.th}
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            transition={{ delay: 0.7 + index * 0.1 }}
+                                                            sx={{
+                                                                color: "#0ff",
+                                                                borderBottom: "1px solid #0ff44"
+                                                            }}
+                                                        >
+                                                            {header}
+                                                        </TableCell>
+                                                    ))}
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -289,11 +470,28 @@ function Profile() {
                                                     </TableRow>
                                                 ) : (
                                                     recentAudits?.audits?.map((audit, index) => (
-                                                        <TableRow key={index}>
+                                                        <TableRow
+                                                            key={index}
+                                                            component={motion.tr}
+                                                            initial={{ opacity: 0, x: -50 }}
+                                                            animate={{ opacity: 1, x: 0 }}
+                                                            transition={{ delay: 0.8 + index * 0.05 }}
+                                                            hover
+                                                            sx={{
+                                                                "&:hover": {
+                                                                    backgroundColor: "rgba(0, 255, 255, 0.1)"
+                                                                }
+                                                            }}
+                                                        >
                                                             <TableCell sx={{ color: "white" }}>{audit.group.object.name}</TableCell>
                                                             <TableCell sx={{ color: "white" }}>{audit.group.captainLogin}</TableCell>
                                                             <TableCell sx={{ color: "white" }}>{new Date(audit.closedAt).toLocaleDateString()}</TableCell>
-                                                            <TableCell sx={{ color: "white" }}>{audit.closureType}</TableCell>
+                                                            <TableCell sx={{
+                                                                color: audit.closureType === "FAILED" ? "#ff4444" : "#0ff",
+                                                                fontWeight: "bold"
+                                                            }}>
+                                                                {audit.closureType}
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))
                                                 )}
