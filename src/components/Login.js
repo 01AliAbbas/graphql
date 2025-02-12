@@ -15,61 +15,62 @@ import { loadFull } from "tsparticles";
 import { Particles } from "react-tsparticles";
 
 const ParticlesComponent = () => {
-  const particlesInit = useCallback(async engine => {
-    await loadFull(engine);
-  }, []);
-
-  return (
-    <Particles
-      id="tsparticles"
-      init={particlesInit}
-      options={{
-        background: { color: { value: "transparent" } },
-        particles: {
-          number: { value: 50, density: { enable: true, value_area: 800 } },
-          color: { value: "#0ff" },
-          shape: { type: "circle" },
-          opacity: { value: 0.5 },
-          size: { value: 3, random: true },
-          links: {
-            enable: true,
-            distance: 150,
-            color: "#0ff",
-            opacity: 0.4,
-            width: 1
+    const particlesInit = useCallback(async (engine) => {
+      await loadFull(engine);
+    }, []);
+  
+    return (
+      <Particles
+        id="tsparticles"
+        init={particlesInit}
+        options={{
+          background: { color: { value: "transparent" } },
+          particles: {
+            number: { value: 40, density: { enable: true, area: 800 } },
+            color: { value: "#0ff" },
+            shape: { type: "circle" },
+            opacity: { value: 0.5 },
+            size: { value: 3, random: true },
+            links: {
+              enable: true,
+              distance: 150,
+              color: "#0ff",
+              opacity: 0.4,
+              width: 1
+            },
+            move: {
+              enable: true,
+              speed: 1.5,
+              direction: "none",
+              random: false,
+              straight: false,
+              outModes: "out",
+              bounce: false,
+            }
           },
-          move: {
-            enable: true,
-            speed: 2,
-            direction: "none",
-            random: false,
-            straight: false,
-            out_mode: "out",
-            bounce: false,
-          }
-        },
-        interactivity: {
-          events: {
-            onHover: { enable: true, mode: "repulse" },
-            onClick: { enable: true, mode: "push" }
+          interactivity: {
+            events: {
+              onHover: { enable: true, mode: "repulse" },
+              onClick: { enable: true, mode: "push" }
+            },
+            modes: {
+              repulse: { distance: 100, duration: 0.4 },
+              push: { quantity: 4 }
+            }
           },
-          modes: {
-            repulse: { distance: 100, duration: 0.4 },
-            push: { particles_nb: 4 }
-          }
-        },
-        retina_detect: true
-      }}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%"
-      }}
-    />
-  );
-};
+          detectRetina: true
+        }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0
+        }}
+      />
+    );
+  };
 
 function Login() {
     const [username, setUsername] = useState("");
@@ -170,7 +171,7 @@ function Login() {
                                 fontFamily: quantumTheme.typography.fontFamily,
                             }}
                         >
-                            Quantum Flux Login
+                            Quantum GraphQL
                         </Typography>
                         <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
                             <motion.div

@@ -128,7 +128,7 @@ function Profile() {
             try {
                 const xpData = await data.fetchXpOverTime();
                 const formattedData = xpData.transactions.map(tx => ({
-                    date: new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+                    date: new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
                     xp: tx.amount / 1000,
                     obj: tx.object.name
                 }));
@@ -204,7 +204,7 @@ function Profile() {
                             letterSpacing: "4px"
                         }}
                     >
-                        Quantum Flux Dashboard
+                        GraphQL
                     </Typography>
                 </motion.div>
 
@@ -291,7 +291,7 @@ function Profile() {
                                                     textShadow: "0 0 10px #0ff"
                                                 }}
                                             >
-                                                Quantum Analytics
+                                                Interesting Analytics
                                             </Typography>
                                             <Grid container spacing={3} sx={{ mt: 4 }}>
                                                 <Grid item xs={12} md={6}>
@@ -332,6 +332,7 @@ function Profile() {
                                                                                     border: "1px solid #0ff",
                                                                                     borderRadius: "8px"
                                                                                 }}
+                                                                                formatter={(value) => [Math.round(value * 1000), 'XP']}
                                                                             />
                                                                         </RadarChart>
                                                                     </ResponsiveContainer>
@@ -359,7 +360,9 @@ function Profile() {
                                                                             <XAxis
                                                                                 dataKey="date"
                                                                                 stroke="#0ff"
-                                                                                tick={{ fill: "#0ff" }}
+                                                                                tick={{ fill: "#0ff", fontSize: 15 }}
+                                                                                interval={20}
+                                                                                angle={-20}
                                                                             />
                                                                             <YAxis
                                                                                 stroke="#0ff"
@@ -376,8 +379,6 @@ function Profile() {
                                                                                 type="monotone"
                                                                                 dataKey="xp"
                                                                                 stroke="#bc13fe"
-                                                                                strokeWidth={2}
-                                                                                dot={{ fill: "#0ff" }}
                                                                                 animationDuration={400}
                                                                             />
                                                                         </LineChart>
