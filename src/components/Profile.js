@@ -374,6 +374,7 @@ function Profile() {
                                                                                     border: "1px solid #0ff",
                                                                                     borderRadius: "8px"
                                                                                 }}
+                                                                                formatter={(value, name, props) => [`${value} KB`, props.payload.obj]}
                                                                             />
                                                                             <Line
                                                                                 type="monotone"
