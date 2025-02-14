@@ -135,7 +135,10 @@ export async function fetchXpOverTime() {
     }
 }
 
-export async function fetchSkills(){
+export async function fetchSkills(userId){
+    if (!userId) {
+        throw new Error("User ID is required");
+    }
     try {
         const response = await fetch("https://learn.reboot01.com/api/graphql-engine/v1/graphql", {
             method: "POST",
@@ -145,15 +148,17 @@ export async function fetchSkills(){
             },
             body: JSON.stringify({
                 query: `
-                    query User {
-                        user {
-                            transactions(where: { type: { _like: "skill_%" } }) {
-                                type
-                                amount
-                            }
+                    query Transactions($userId: Int!) {
+                        transaction(where: { userId: { _eq: $userId }, type: { _like: "skill_%" } }) {
+                            type
+                            amount
                         }
                     }
+
                 `,
+                variables: {
+                    userId: userId,
+                },
             }),
         });
 
@@ -162,10 +167,10 @@ export async function fetchSkills(){
         }
 
         const data = await response.json();
-        console.log("Fetched XP over time:", data);
-        return data.data.user[0].transactions;
+        console.log("Fetched skills", data);
+        return data.data.transaction;
     } catch (error) {
-        console.error("Error fetching XP over time:", error);
+        console.error("Error fetching Skills", error);
         throw error;
     }
 }

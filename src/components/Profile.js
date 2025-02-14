@@ -93,83 +93,68 @@ function Profile() {
     const [totalXP, setTotalXP] = useState(0);
 
     useEffect(() => {
-        const fetchUserData = async () => {
+        const fetchAllData = async () => {
             try {
+                // Fetch user data first
                 const users = await data.fetchUsers();
-                const user = users[0];
-                user.totalUp = Math.round((user?.totalUp / (1000 * 1000)) * 100) / 100;
-                user.totalDown = Math.round((user?.totalDown / (1000 * 1000)) * 100) / 100;
-                setUser(user);
+                const userData = users[0];
+                if (userData) {
+                    userData.totalUp = Math.round((userData?.totalUp / (1000 * 1000)) * 100) / 100;
+                    userData.totalDown = Math.round((userData?.totalDown / (1000 * 1000)) * 100) / 100;
+                    setUser(userData);
+
+                    // Fetch dependent data after user is available
+                    const [audits, xpData, skillsData] = await Promise.all([
+                        data.fetchRecentAudits(),
+                        data.fetchXpOverTime(),
+                        data.fetchSkills(userData.id)
+                    ]);
+
+                   
+                    setAudits(audits);
+
+                   
+                    const formattedData = xpData.transactions.map(tx => ({
+                        date: new Date(tx.createdAt).toLocaleDateString("en-US", { 
+                            month: "short", 
+                            year: "2-digit" 
+                        }),
+                        xp: tx.amount / 1000,
+                        obj: tx.object?.name || 'Unknown'
+                    }));
+                    setXpOverTime(formattedData);
+                    setTotalXP(Math.round(xpData.transactions_aggregate.aggregate.sum.amount / 1000));
+
+                    // Process skills data
+                    const allowedTypes = new Set([
+                        'skill_prog', 'skill_go', 'skill_back-end',
+                        'skill_front-end', 'skill_js', 'skill_html'
+                    ]);
+                    
+                    const skillData = skillsData.reduce((acc, { amount, type }) => {
+                        const cleanType = type.replace('skill_', '');
+                        if (allowedTypes.has(type)) {
+                            acc[cleanType] = ((acc[cleanType] || 0) + amount) / 1000;
+                        }
+                        return acc;
+                    }, {});
+
+                    const skillOrder = ["prog", "go", "back-end", "front-end", "js", "html"];
+                    const sortedSkills = skillOrder
+                        .map(type => ({ type, xp: skillData[type] || 0 }))
+                        .filter(skill => skill.xp > 0);
+
+                    setSkills(sortedSkills);
+                }
             } catch (error) {
-                console.error("Failed to fetch user data:", error);
+                console.error("Failed to fetch data:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchUserData();
-    }, []);
 
-    useEffect(() => {
-        const fetchRecentAudits = async () => {
-            try {
-                const audits = await data.fetchRecentAudits();
-                setAudits(audits);
-            } catch (error) {
-                console.error("Failed to fetch recent audits:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchRecentAudits();
-    }, []);
-
-    useEffect(() => {
-        const fetchXpData = async () => {
-            try {
-                const xpData = await data.fetchXpOverTime();
-                const formattedData = xpData.transactions.map(tx => ({
-                    date: new Date(tx.createdAt).toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
-                    xp: tx.amount / 1000,
-                    obj: tx.object.name
-                }));
-
-                setXpOverTime(formattedData);
-                const total = Math.round(xpData.transactions_aggregate.aggregate.sum.amount / 1000);
-                setTotalXP(total);
-            } catch (error) {
-                console.error("Failed to fetch XP over time:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchXpData();
-    }, []);
-
-    useEffect(() => {
-        const fetchSkillsData = async () => {
-            try {
-                const skillsData = await data.fetchSkills();
-                const allowedTypes = ['skill_prog', 'skill_go', 'skill_back-end', 'skill_front-end', 'skill_js', 'skill_html'];
-                const skillData = skillsData.reduce((acc, { amount, type }) => {
-                    const skillType = type.replace('skill_', '');
-                    if (!allowedTypes.includes(type.toLowerCase())) return acc;
-                    acc[skillType] = ((acc[skillType] || 0) + amount) / 1000;
-                    return acc;
-                }, []);
-                const formattedSkills = Object.entries(skillData).map(([type, xp]) => ({ type, xp }));
-                const skillOrder = ["prog", "go", "back-end", "front-end", "js", "html"];
-                const sortedSkills = formattedSkills.sort((a, b) =>
-                    skillOrder.indexOf(a.type) - skillOrder.indexOf(b.type)
-                );
-                setSkills(sortedSkills);
-            } catch (error) {
-                console.error("Failed to fetch skills:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchSkillsData();
-    }, []);
+        fetchAllData();
+    }, []); // Empty dependency array: runs once on mount
 
     const handleLogout = () => {
         localStorage.removeItem("token");
